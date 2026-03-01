@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ตั้งค่าระบบ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="js/api-config.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1b2a 100%);
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 16px 60px;
+      position: relative;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      width: 400px; height: 400px;
+      background: #06b6d4;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.08;
+      top: -100px; right: -100px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      position: relative; z-index: 1;
+      animation: fadeIn 0.5s ease;
+    }
+
+    /* Header */
+    .page-header { margin-bottom: 24px; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #64748b; text-decoration: none; font-size: 0.88em;
+      padding: 6px 12px; border-radius: 20px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.25s ease;
+      margin-bottom: 14px;
+    }
+    .back-btn:hover { color: #e2e8f0; background: rgba(255,255,255,0.1); }
+
+    h2 {
+      font-size: 1.6em; font-weight: 700;
+      background: linear-gradient(135deg, #a5b4fc, #e2e8f0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+    .page-subtitle { font-size: 0.83em; color: #64748b; }
+
+    /* Card */
+    .card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 24px 22px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      margin-bottom: 16px;
+    }
+
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .section-icon {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px;
+    }
+    .section-icon.indigo  { background: rgba(99,102,241,0.2); }
+    .section-icon.cyan    { background: rgba(6,182,212,0.2);  }
+    .section-title-text { font-weight: 600; font-size: 0.95em; color: #c7d2fe; }
+
+    /* Inputs */
+    label {
+      display: block; font-size: 0.82em; font-weight: 600;
+      color: #94a3b8; margin-bottom: 6px; letter-spacing: 0.03em;
+    }
+    input {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      color: #e2e8f0;
+      font-size: 14px;
+      font-family: 'Sarabun', sans-serif;
+      outline: none;
+      transition: all 0.3s ease;
+      margin-bottom: 14px;
+    }
+    input::placeholder { color: #334155; }
+    input:focus {
+      border-color: rgba(99,102,241,0.5);
+      background: rgba(99,102,241,0.07);
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    }
+    .note {
+      font-size: 0.78em; color: #475569;
+      margin-top: -10px; margin-bottom: 14px; line-height: 1.5;
+    }
+
+    /* Buttons */
+    .btn {
+      border: none; border-radius: 12px; cursor: pointer;
+      font-family: 'Sarabun', sans-serif; font-size: 15px; font-weight: 600;
+      padding: 13px; width: 100%;
+      transition: all 0.3s ease;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-get-loc {
+      background: linear-gradient(135deg, #0891b2, #06b6d4);
+      color: white;
+      box-shadow: 0 4px 15px rgba(6,182,212,0.3);
+      margin-bottom: 18px;
+    }
+    .btn-get-loc:hover {
+      box-shadow: 0 6px 25px rgba(6,182,212,0.45);
+      transform: translateY(-1px);
+    }
+    .btn-save {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 4px 20px rgba(16,185,129,0.3);
+      font-size: 16px; padding: 15px;
+    }
+    .btn-save:hover {
+      box-shadow: 0 8px 30px rgba(16,185,129,0.5);
+      transform: translateY(-2px);
+    }
+
+    .btn-back {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 13px; width: 100%; border-radius: 12px;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #64748b; font-size: 15px; font-weight: 600;
+      font-family: 'Sarabun', sans-serif;
+      text-decoration: none; cursor: pointer;
+      transition: all 0.25s ease;
+      margin-top: 10px;
+    }
+    .btn-back:hover { color: #e2e8f0; border-color: rgba(255,255,255,0.25); background: rgba(255,255,255,0.05); }
+
+    .input-row {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.07);
+      margin: 4px 0 18px;
+    }
+
+    #msg {
+      margin-top: 14px; min-height: 22px;
+      font-size: 0.9em; font-weight: 600;
+      text-align: center;
+    }
+    .msg-success { color: #34d399; }
+    .msg-error   { color: #f87171; }
+
+    /* Animation */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="page-header">
+    <a href="index.html" class="back-btn">← กลับ</a>
+    <h2>⚙️ ตั้งค่าระบบ</h2>
+    <p class="page-subtitle">จัดการ API และจุดเช็คอิน GPS</p>
+  </div>
+
+  <!-- API URL Card -->
+  <div class="card">
+    <div class="section-header">
+      <div class="section-icon indigo">🔗</div>
+      <span class="section-title-text">Google Apps Script API</span>
+    </div>
+
+    <label>WEB APP URL</label>
+    <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <p class="note">Deploy GAS แล้วนำ URL มาวางที่นี่ (Execute as: Me / Anyone can access)</p>
+  </div>
+
+  <!-- GPS Config Card -->
+  <div class="card">
+    <div class="section-header">
+      <div class="section-icon cyan">📍</div>
+      <span class="section-title-text">จุดเช็คอิน GPS</span>
+    </div>
+
+    <button class="btn btn-get-loc" onclick="getCurrentLocation()">
+      📍 ดึงตำแหน่งปัจจุบันของฉัน
+    </button>
+
+    <div class="input-row">
+      <div>
+        <label>LATITUDE</label>
+        <input type="number" step="any" id="lat" placeholder="13.7563">
+      </div>
+      <div>
+        <label>LONGITUDE</label>
+        <input type="number" step="any" id="lng" placeholder="100.5018">
+      </div>
+    </div>
+
+    <label>รัศมีที่ยอมรับ (กิโลเมตร)</label>
+    <input type="number" step="0.01" id="radius" placeholder="เช่น 0.1 คือ 100 เมตร">
+    <p class="note">* ใส่ 0 หากไม่ต้องการจำกัดพื้นที่</p>
+  </div>
+
+  <!-- Actions -->
+  <button class="btn btn-save" onclick="saveAll()">
+    💾 บันทึกการตั้งค่าทั้งหมด
+  </button>
+  <div id="msg"></div>
+
+  <a href="index.html" class="btn-back">← กลับเมนูหลัก</a>
+</div>
+
+<script>
+  const msgDiv = document.getElementById('msg');
+
+  // โหลดค่าที่บันทึกไว้
+  window.onload = function() {
+    const savedUrl = localStorage.getItem('gasApiUrl') || GAS_API_URL;
+    document.getElementById('apiUrl').value = savedUrl;
+
+    if (savedUrl) {
+      loadGpsConfig(savedUrl);
+    }
+  };
+
+  function loadGpsConfig(apiUrl) {
+    fetch(apiUrl + '?action=getConfig')
+      .then(r => r.json())
+      .then(config => {
+        document.getElementById('lat').value    = config.lat    || '';
+        document.getElementById('lng').value    = config.lng    || '';
+        document.getElementById('radius').value = config.radius || '0.5';
+      })
+      .catch(() => {}); // ถ้าโหลดไม่ได้ก็ข้ามไป
+  }
+
+  function getCurrentLocation() {
+    if (!navigator.geolocation) return alert('Browser นี้ไม่รองรับ Geolocation');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        document.getElementById('lat').value = pos.coords.latitude;
+        document.getElementById('lng').value = pos.coords.longitude;
+        alert('✅ ดึงพิกัดเรียบร้อย');
+      },
+      err => alert('❌ ไม่สามารถดึงตำแหน่งได้: ' + err.message)
+    );
+  }
+
+  async function saveAll() {
+    const apiUrl = document.getElementById('apiUrl').value.trim();
+    const lat    = document.getElementById('lat').value;
+    const lng    = document.getElementById('lng').value;
+    const radius = document.getElementById('radius').value;
+
+    if (!apiUrl) return showMsg('❌ กรุณากรอก API URL', 'error');
+    if (!lat || !lng || !radius) return showMsg('❌ กรุณากรอกข้อมูล GPS ให้ครบ', 'error');
+
+    // บันทึก API URL ลง localStorage
+    localStorage.setItem('gasApiUrl', apiUrl);
+    showMsg('⏳ กำลังบันทึก...', '');
+
+    try {
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'saveConfig', lat, lng, radius })
+      });
+      const data = await res.json();
+      showMsg('✅ ' + (data.message || 'บันทึกสำเร็จ'), 'success');
+    } catch (e) {
+      showMsg('❌ เชื่อมต่อ API ไม่ได้: ' + e.message, 'error');
+    }
+  }
+
+  function showMsg(text, type) {
+    msgDiv.innerText = text;
+    msgDiv.className = type === 'success' ? 'msg-success' : type === 'error' ? 'msg-error' : '';
+  }
+</script>
+</body>
+</html>

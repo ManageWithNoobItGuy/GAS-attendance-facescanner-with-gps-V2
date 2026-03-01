@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ระบบบันทึกเวลาเข้างาน</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="js/api-config.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #0d1b2a 100%);
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px 60px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Ambient orbs */
+    body::before, body::after {
+      content: '';
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      pointer-events: none;
+      z-index: 0;
+    }
+    body::before {
+      width: 400px; height: 400px;
+      background: #6366f1;
+      top: -100px; left: -100px;
+    }
+    body::after {
+      width: 350px; height: 350px;
+      background: #10b981;
+      bottom: -80px; right: -80px;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      position: relative; z-index: 1;
+      animation: fadeInDown 0.6s ease;
+    }
+    .logo-icon {
+      font-size: 52px;
+      display: block;
+      margin-bottom: 12px;
+      filter: drop-shadow(0 0 20px rgba(99,102,241,0.6));
+    }
+    h1 {
+      font-size: 1.7em;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a5b4fc, #e2e8f0);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 0.85em;
+      color: #64748b;
+      letter-spacing: 0.03em;
+    }
+
+    /* Warning */
+    .api-warning {
+      display: none;
+      background: rgba(245,158,11,0.15);
+      border: 1px solid rgba(245,158,11,0.4);
+      color: #fcd34d;
+      border-radius: 12px;
+      padding: 12px 18px;
+      width: 100%;
+      max-width: 360px;
+      margin-bottom: 20px;
+      font-size: 0.88em;
+      position: relative; z-index: 1;
+      animation: fadeIn 0.5s ease;
+    }
+    .api-warning a { color: #fbbf24; font-weight: 600; text-decoration: none; }
+
+    /* Menu Cards */
+    .menu-cards {
+      width: 100%;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative; z-index: 1;
+    }
+
+    .btn-menu {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 22px;
+      text-decoration: none;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      color: #e2e8f0;
+      transition: all 0.3s ease;
+      animation: fadeInUp 0.5s ease both;
+    }
+    .btn-menu:nth-child(1) { animation-delay: 0.1s; }
+    .btn-menu:nth-child(2) { animation-delay: 0.2s; }
+    .btn-menu:nth-child(3) { animation-delay: 0.3s; }
+
+    .btn-menu:hover {
+      transform: translateY(-4px);
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.25);
+    }
+
+    .btn-register:hover { box-shadow: 0 8px 30px rgba(99,102,241,0.35); border-color: rgba(99,102,241,0.5); }
+    .btn-scan:hover     { box-shadow: 0 8px 30px rgba(16,185,129,0.35); border-color: rgba(16,185,129,0.5); }
+    .btn-config:hover   { box-shadow: 0 8px 30px rgba(100,116,139,0.25); border-color: rgba(148,163,184,0.4); }
+
+    .card-icon {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+    .btn-register .card-icon { background: linear-gradient(135deg, #6366f1, #4f46e5); box-shadow: 0 4px 15px rgba(99,102,241,0.4); }
+    .btn-scan     .card-icon { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16,185,129,0.4); }
+    .btn-config   .card-icon { background: linear-gradient(135deg, #475569, #334155); box-shadow: 0 4px 15px rgba(71,85,105,0.4); }
+
+    .card-text { flex: 1; text-align: left; }
+    .card-title { font-size: 1.05em; font-weight: 600; color: #f1f5f9; margin-bottom: 2px; }
+    .card-desc  { font-size: 0.8em; color: #64748b; }
+
+    .card-arrow {
+      font-size: 18px; color: #475569;
+      transition: transform 0.3s ease, color 0.3s ease;
+    }
+    .btn-menu:hover .card-arrow { transform: translateX(4px); color: #94a3b8; }
+
+    /* Animations */
+    @keyframes fadeIn    { from { opacity: 0; }                      to { opacity: 1; } }
+    @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeInUp  { from { opacity: 0; transform: translateY(20px);  } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <span class="logo-icon">🏢</span>
+    <h1>ระบบบันทึกเวลาเข้างาน</h1>
+    <p class="subtitle">Face Recognition &amp; GPS Attendance</p>
+  </div>
+
+  <div id="apiWarning" class="api-warning">
+    ⚠️ ยังไม่ได้ตั้งค่า API —
+    <a href="config.html">ไปตั้งค่าก่อน</a>
+  </div>
+
+  <div class="menu-cards">
+    <a href="register.html" class="btn-menu btn-register">
+      <div class="card-icon">👤</div>
+      <div class="card-text">
+        <div class="card-title">ลงทะเบียนพนักงาน</div>
+        <div class="card-desc">บันทึกข้อมูลใบหน้าใหม่</div>
+      </div>
+      <span class="card-arrow">›</span>
+    </a>
+
+    <a href="scan.html" class="btn-menu btn-scan">
+      <div class="card-icon">📷</div>
+      <div class="card-text">
+        <div class="card-title">สแกนเข้างาน</div>
+        <div class="card-desc">ยืนยันตัวตนด้วยใบหน้า + GPS</div>
+      </div>
+      <span class="card-arrow">›</span>
+    </a>
+
+    <a href="config.html" class="btn-menu btn-config">
+      <div class="card-icon">⚙️</div>
+      <div class="card-text">
+        <div class="card-title">ตั้งค่าระบบ</div>
+        <div class="card-desc">จัดการ GPS และ API (Admin)</div>
+      </div>
+      <span class="card-arrow">›</span>
+    </a>
+  </div>
+
+  <script>
+    if (!localStorage.getItem('gasApiUrl') && typeof GAS_API_URL === 'undefined') {
+      document.getElementById('apiWarning').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
