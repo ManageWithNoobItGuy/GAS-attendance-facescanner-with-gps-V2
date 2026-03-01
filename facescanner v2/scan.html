@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>สแกนเข้างาน</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <script src="js/api-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Sarabun', sans-serif;
+      min-height: 100vh;
+      background: linear-gradient(160deg, #0f0f23 0%, #0d1b2a 60%, #0a0f1e 100%);
+      color: #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 50px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      width: 500px; height: 500px;
+      background: #10b981;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.08;
+      bottom: -150px; right: -150px;
+      pointer-events: none; z-index: 0;
+    }
+
+    .page-wrap {
+      width: 100%; max-width: 560px;
+      position: relative; z-index: 1;
+      animation: fadeIn 0.5s ease;
+      display: flex; flex-direction: column; align-items: center;
+    }
+
+    /* Header */
+    .top-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      width: 100%; margin-bottom: 16px;
+    }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #64748b; text-decoration: none; font-size: 0.85em;
+      padding: 6px 12px; border-radius: 20px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.25s ease;
+    }
+    .back-btn:hover { color: #e2e8f0; background: rgba(255,255,255,0.1); }
+
+    h2 {
+      font-size: 1.1em; font-weight: 600; color: #c7d2fe;
+    }
+    .spacer { width: 80px; }
+
+    /* Status Area */
+    .status-area {
+      width: 100%; text-align: center; margin-bottom: 14px;
+    }
+    #main-status {
+      font-size: 0.9em; color: #94a3b8;
+      min-height: 22px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    #gps-status {
+      font-size: 0.8em; color: #475569; margin-top: 6px;
+      min-height: 18px;
+    }
+    .status-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      padding: 5px 12px; font-size: 0.82em;
+    }
+    .dot-pulse {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #10b981;
+      animation: pulse 1.5s infinite;
+    }
+
+    /* GPS Alert */
+    .gps-alert {
+      display: none;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.35);
+      color: #fca5a5;
+      border-radius: 12px; padding: 12px 16px;
+      width: 100%; margin-bottom: 12px;
+      font-size: 0.88em; font-weight: 600;
+      text-align: center;
+    }
+
+    /* Scanner Container */
+    .video-container {
+      position: relative;
+      width: 100%;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #060612;
+      min-height: 280px;
+    }
+
+    video {
+      width: 100%; height: auto; display: block;
+      transform: scaleX(-1);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      border-radius: 20px;
+    }
+    video.active { opacity: 1; }
+
+    /* Scanner frame corners */
+    .scanner-frame {
+      position: absolute; inset: 0; z-index: 5; pointer-events: none;
+    }
+    .corner {
+      position: absolute;
+      width: 28px; height: 28px;
+      border-color: #10b981;
+      border-style: solid;
+      opacity: 0.8;
+    }
+    .corner-tl { top: 14px;    left: 14px;   border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+    .corner-tr { top: 14px;    right: 14px;  border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+    .corner-bl { bottom: 14px; left: 14px;   border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+    .corner-br { bottom: 14px; right: 14px;  border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+    /* Scan line */
+    .scan-line {
+      display: none;
+      position: absolute; left: 8%; right: 8%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #10b981, transparent);
+      box-shadow: 0 0 8px rgba(16,185,129,0.8);
+      z-index: 6;
+      animation: scanMove 2s ease-in-out infinite;
+    }
+    .scan-line.active { display: block; }
+
+    /* Overlay status badge */
+    #overlay-status {
+      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(8px);
+      color: #e2e8f0;
+      padding: 6px 18px; border-radius: 30px;
+      z-index: 10; white-space: nowrap; font-size: 0.84em;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* Start Button */
+    #btnStart {
+      display: none;
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      color: white; border: none; border-radius: 50px;
+      padding: 16px 44px; font-size: 18px; font-weight: 600;
+      cursor: pointer; font-family: 'Sarabun', sans-serif;
+      box-shadow: 0 4px 25px rgba(99,102,241,0.45);
+      margin: 20px auto 0;
+      transition: all 0.3s ease;
+      animation: btnPulse 2s ease-in-out infinite;
+    }
+    #btnStart:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 35px rgba(99,102,241,0.6);
+      animation: none;
+    }
+
+    /* ===== Modal ===== */
+    .modal-overlay {
+      display: none; position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 100;
+      align-items: center; justify-content: center;
+    }
+    .modal-content {
+      background: linear-gradient(160deg, #1e1e3f 0%, #16213e 100%);
+      border: 1px solid rgba(255,255,255,0.15);
+      padding: 32px 28px;
+      border-radius: 24px;
+      width: 88%; max-width: 360px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      display: flex; flex-direction: column; align-items: center;
+      animation: modalSlideUp 0.35s ease;
+    }
+    .modal-avatar {
+      font-size: 52px;
+      background: rgba(99,102,241,0.15);
+      border: 2px solid rgba(99,102,241,0.3);
+      border-radius: 50%;
+      width: 80px; height: 80px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 14px;
+    }
+    .modal-title { font-size: 0.82em; color: #64748b; margin-bottom: 4px; }
+    .user-name {
+      font-size: 24px; color: #a5b4fc; font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .time-badge {
+      background: rgba(16,185,129,0.15);
+      border: 1px solid rgba(16,185,129,0.3);
+      color: #34d399;
+      padding: 8px 22px; border-radius: 30px;
+      font-size: 15px; font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .score-text { color: #475569; font-size: 13px; margin-bottom: 20px; }
+
+    .btn {
+      border: none; border-radius: 14px; cursor: pointer; width: 100%;
+      margin: 5px 0; font-family: 'Sarabun', sans-serif;
+      transition: all 0.25s ease;
+    }
+    .btn-confirm {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      padding: 17px; font-size: 20px; font-weight: 700;
+      box-shadow: 0 4px 20px rgba(16,185,129,0.35);
+      margin-bottom: 10px;
+    }
+    .btn-confirm:hover:not(:disabled) {
+      box-shadow: 0 8px 30px rgba(16,185,129,0.5);
+      transform: translateY(-1px);
+    }
+    .btn-confirm:disabled { background: rgba(255,255,255,0.08); color: #475569; box-shadow: none; }
+    .btn-cancel {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.25);
+      color: #fca5a5;
+      padding: 12px; font-size: 15px; font-weight: 600;
+    }
+    .btn-cancel:hover { background: rgba(239,68,68,0.18); }
+
+    /* Animations */
+    @keyframes fadeIn      { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse       { 0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.4); } 50% { box-shadow: 0 0 0 5px rgba(16,185,129,0); } }
+    @keyframes btnPulse    { 0%,100% { box-shadow: 0 4px 25px rgba(99,102,241,0.45); } 50% { box-shadow: 0 4px 40px rgba(99,102,241,0.7); } }
+    @keyframes scanMove    { 0% { top: 12%; } 50% { top: 82%; } 100% { top: 12%; } }
+    @keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="top-bar">
+    <a href="index.html" class="back-btn">← กลับ</a>
+    <h2>📷 สแกนเข้างาน</h2>
+    <div class="spacer"></div>
+  </div>
+
+  <div class="status-area">
+    <div id="main-status">⏳ กำลังเตรียมระบบ...</div>
+    <div id="gps-status"></div>
+  </div>
+
+  <div id="gps-alert-box" class="gps-alert">
+    ⚠️ คุณอยู่นอกพื้นที่ที่กำหนด!<br>กรุณาเข้าใกล้จุดเช็คอินแล้วรีเฟรชหน้าจอ
+  </div>
+
+  <button id="btnStart" onclick="startCamera()">📷 แตะเพื่อเริ่มสแกน</button>
+
+  <div class="video-container">
+    <div class="scanner-frame">
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
+      <div class="scan-line" id="scanLine"></div>
+    </div>
+    <div id="overlay-status">รอโหลด...</div>
+    <video id="video" autoplay muted playsinline></video>
+  </div>
+
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-avatar">🙋</div>
+    <p class="modal-title">ตรวจพบบุคคล</p>
+    <div class="user-name" id="modalName">...</div>
+    <div id="modalTime" class="time-badge">00:00</div>
+    <div id="modalScore" class="score-text"></div>
+    <button class="btn btn-confirm" id="btnConfirm" onclick="confirmAttendance()">✅ ยืนยันเข้างาน</button>
+    <button class="btn btn-cancel" onclick="cancelAttendance()">ไม่ใช่ฉัน</button>
+  </div>
+</div>
+
+<script>
+  const API_URL        = localStorage.getItem('gasApiUrl') || GAS_API_URL;
+  const video          = document.getElementById('video');
+  const mainStatus     = document.getElementById('main-status');
+  const overlayStatus  = document.getElementById('overlay-status');
+  const confirmModal   = document.getElementById('confirmModal');
+  const gpsStatus      = document.getElementById('gps-status');
+  const gpsAlertBox    = document.getElementById('gps-alert-box');
+  const btnStart       = document.getElementById('btnStart');
+
+  const MATCH_THRESHOLD = 0.45;
+
+  let knownFaces   = [];
+  let scanInterval = null;
+  let currentMatch = null;
+  let currentLat   = null;
+  let currentLng   = null;
+
+  // ===== Init =====
+  if (!API_URL) {
+    showError('ยังไม่ได้ตั้งค่า API URL — <a href="config.html" style="color:#fbbf24">ไปตั้งค่า</a>');
+  } else {
+    window.addEventListener('load', init);
+  }
+
+  async function init() {
+    try {
+      mainStatus.innerText = '1/4 ตรวจสอบ GPS...';
+      await checkGPS();
+    } catch (e) {
+      showError(e.message);
+    }
+  }
+
+  // ===== GPS =====
+  function checkGPS() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Browser ไม่รองรับ GPS'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          currentLat = pos.coords.latitude;
+          currentLng = pos.coords.longitude;
+
+          try {
+            const config = await fetch(API_URL + '?action=getConfig').then(r => r.json());
+
+            if (!config.lat || !config.lng || config.radius == 0) {
+              gpsStatus.innerHTML = '<span style="color:#34d399">📍 GPS: ไม่จำกัดพื้นที่</span>';
+              resolve();
+              initFaceSystem();
+              return;
+            }
+
+            const dist = haversineKm(currentLat, currentLng, config.lat, config.lng);
+
+            if (dist <= config.radius) {
+              gpsStatus.innerHTML = '<span style="color:#34d399">📍 GPS: OK (ห่างเป้าหมาย ' + dist.toFixed(3) + ' km)</span>';
+              resolve();
+              initFaceSystem();
+            } else {
+              gpsStatus.innerHTML = '<span style="color:#f87171">📍 GPS: ห่างเกินไป (' + dist.toFixed(3) + ' km / กำหนด ' + config.radius + ' km)</span>';
+              gpsAlertBox.style.display = 'block';
+              mainStatus.innerText = '⛔ ไม่อนุญาตให้สแกน';
+              overlayStatus.innerText = 'Out of Range';
+            }
+          } catch (e) {
+            reject(new Error('เชื่อมต่อ API ไม่ได้: ' + e.message));
+          }
+        },
+        () => reject(new Error('กรุณาเปิด GPS (Location Service)'))
+      );
+    });
+  }
+
+  // ===== Load AI =====
+  async function initFaceSystem() {
+    mainStatus.innerText = '2/4 โหลด AI Model...';
+    const MODEL_URL = 'https://justadudewhohacks.github.io/face-api.js/models';
+    try {
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+      ]);
+      loadFaceDatabase();
+    } catch (e) {
+      showError('โหลด AI Model ล้มเหลว: ' + e.message);
+    }
+  }
+
+  // ===== Load DB =====
+  async function loadFaceDatabase() {
+    mainStatus.innerText = '3/4 โหลดฐานข้อมูลพนักงาน...';
+    try {
+      const data = await fetch(API_URL + '?action=getKnownFaces').then(r => r.json());
+      if (!data || data.length === 0) return showError('ไม่พบข้อมูลพนักงาน กรุณาลงทะเบียนก่อน');
+
+      knownFaces = data.map(u => ({
+        name: u.label,
+        descriptor: new Float32Array(u.descriptor)
+      }));
+
+      mainStatus.innerText    = '✅ ระบบพร้อมใช้งาน';
+      mainStatus.style.color  = '#34d399';
+      btnStart.style.display  = 'inline-block';
+    } catch (e) {
+      showError('โหลดฐานข้อมูลล้มเหลว: ' + e.message);
+    }
+  }
+
+  // ===== Camera =====
+  function startCamera() {
+    btnStart.style.display = 'none';
+    mainStatus.innerText   = 'กำลังเปิดกล้อง...';
+    mainStatus.style.color = '#94a3b8';
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+      .then(stream => {
+        video.srcObject = stream;
+        video.classList.add('active');
+        mainStatus.innerText   = '✅ กำลังสแกน...';
+        mainStatus.style.color = '#34d399';
+        document.getElementById('scanLine').classList.add('active');
+        startScanLoop();
+      })
+      .catch(err => {
+        showError('เปิดกล้องไม่ได้: ' + err.message);
+        btnStart.style.display = 'inline-block';
+      });
+  }
+
+  // ===== Scan Loop =====
+  function startScanLoop() {
+    if (scanInterval) clearInterval(scanInterval);
+    overlayStatus.innerText     = 'มองกล้องเพื่อสแกน';
+    overlayStatus.style.background = 'rgba(0,0,0,0.65)';
+
+    scanInterval = setInterval(async () => {
+      if (video.paused || video.ended) return;
+
+      const detection = await faceapi
+        .detectSingleFace(video)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (detection) {
+        const best = findBestMatch(detection.descriptor);
+        if (best.distance < MATCH_THRESHOLD) {
+          clearInterval(scanInterval);
+          document.getElementById('scanLine').classList.remove('active');
+          showModal(best);
+        } else {
+          overlayStatus.innerText            = 'ไม่รู้จัก (' + best.distance.toFixed(2) + ')';
+          overlayStatus.style.background     = 'rgba(239,68,68,0.6)';
+        }
+      }
+    }, 500);
+  }
+
+  function findBestMatch(queryDesc) {
+    let best = { name: 'unknown', distance: 1.0 };
+    knownFaces.forEach(u => {
+      const d = faceapi.euclideanDistance(queryDesc, u.descriptor);
+      if (d < best.distance) best = { name: u.name, distance: d };
+    });
+    return best;
+  }
+
+  // ===== Modal =====
+  function showModal(match) {
+    currentMatch = match.name;
+    document.getElementById('modalName').innerText  = match.name;
+
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('modalTime').innerText  = 'เวลาเข้างาน: ' + timeStr + ' น.';
+
+    const pct = ((1 - match.distance) * 100).toFixed(1);
+    document.getElementById('modalScore').innerText = 'ความเหมือน: ' + pct + '%';
+
+    confirmModal.style.display = 'flex';
+    mainStatus.innerText = 'กรุณายืนยัน...';
+  }
+
+  async function confirmAttendance() {
+    const btn = document.getElementById('btnConfirm');
+    btn.disabled   = true;
+    btn.innerText  = 'กำลังบันทึก...';
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'logAttendance', name: currentMatch, lat: currentLat, lng: currentLng })
+      });
+      const data = await res.json();
+      alert('✅ ' + (data.message || 'บันทึกเวลาสำเร็จ'));
+      window.location.href = 'index.html';
+    } catch (e) {
+      alert('❌ บันทึกล้มเหลว: ' + e.message);
+      btn.disabled  = false;
+      btn.innerText = '✅ ยืนยันเข้างาน';
+    }
+  }
+
+  function cancelAttendance() {
+    confirmModal.style.display = 'none';
+    currentMatch = null;
+    if (scanInterval) clearInterval(scanInterval);
+
+    if (video.srcObject) {
+      video.srcObject.getTracks().forEach(t => t.stop());
+      video.srcObject = null;
+    }
+    video.classList.remove('active');
+    document.getElementById('scanLine').classList.remove('active');
+
+    mainStatus.innerText    = '✅ ระบบพร้อมใช้งาน';
+    mainStatus.style.color  = '#34d399';
+    overlayStatus.innerText = 'รอโหลด...';
+    overlayStatus.style.background = 'rgba(0,0,0,0.65)';
+    btnStart.style.display  = 'inline-block';
+  }
+
+  // ===== Helpers =====
+  function showError(msg) {
+    mainStatus.innerHTML = '<span style="color:#f87171">❌ ' + msg + '</span>';
+  }
+
+  function haversineKm(lat1, lon1, lat2, lon2) {
+    const R    = 6371;
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a = Math.sin(dLat/2) ** 2 +
+              Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  function deg2rad(deg) { return deg * Math.PI / 180; }
+</script>
+</body>
+</html>
